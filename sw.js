@@ -1,7 +1,7 @@
 /* Service worker de l'Inventaire.
    Change le numéro de version à chaque nouvelle mise en ligne
    pour forcer le rafraîchissement du cache. */
-const CACHE = 'inventaire-v1';
+const CACHE = 'inventaire-v2';
 const COQUILLE = [
   './',
   './index.html',

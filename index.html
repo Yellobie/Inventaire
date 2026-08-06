@@ -794,8 +794,15 @@ function vReglages(){
 /* =========================================================
    4. ACTIONS SUR UN OBJET
    ========================================================= */
-function ouvrirFeuille(html){ $('#feuille').innerHTML = html; $('#voile').classList.add('ouvert'); }
-function fermerFeuille(){ $('#voile').classList.remove('ouvert'); }
+let feuilleOuverte = false;
+function ouvrirFeuille(html){
+  $('#feuille').innerHTML = html;
+  $('#voile').classList.add('ouvert');
+  // une fiche ouverte compte comme une étape : le retour Android la referme
+  if(!feuilleOuverte){ feuilleOuverte = true; pousser({feuille:true}); }
+}
+function masquerFeuille(){ feuilleOuverte = false; $('#voile').classList.remove('ouvert'); }
+function fermerFeuille(){ if(feuilleOuverte) history.back(); else masquerFeuille(); }
 $('#voile').addEventListener('click', e => { if(e.target.id === 'voile') fermerFeuille(); });
 
 function menuObjet(catId, sousId, objId){
@@ -877,14 +884,37 @@ function importer(fichier){
 /* =========================================================
    6. NAVIGATION
    ========================================================= */
-function aller(v){
+let profondeur = 0;
+
+function pousser(etat){
+  profondeur++;
+  try{ history.pushState(Object.assign({p:profondeur}, etat), ''); }catch(e){}
+}
+/* applique un écran sans toucher à l'historique */
+function appliquer(v){
   vue = Object.assign({}, v, {preCat:vue.preCat, preSous:vue.preSous});
   $('#champ-recherche').value = '';
   rendre();
   corps.scrollTop = 0;
 }
-$('#retour').onclick = () =>
+function aller(v){
+  if(v.ecran === vue.ecran && v.cat === vue.cat && v.sous === vue.sous) return appliquer(v);
+  pousser({vue:{ecran:v.ecran, cat:v.cat, sous:v.sous}});
+  appliquer(v);
+}
+
+/* bouton retour d'Android (et du navigateur sur PC) */
+window.addEventListener('popstate', e => {
+  profondeur = Math.max(0, profondeur - 1);
+  if(feuilleOuverte) return masquerFeuille();   // referme la fiche avant tout
+  const s = e.state;
+  appliquer(s && s.vue ? s.vue : {ecran:'accueil'});
+});
+
+$('#retour').onclick = () => {
+  if(profondeur > 0) return history.back();
   aller(vue.ecran === 'sousCat' ? {ecran:'categorie', cat:vue.cat} : {ecran:'accueil'});
+};
 document.querySelectorAll('#onglets button').forEach(b =>
   b.onclick = () => aller({ecran: b.dataset.onglet === 'etageres' ? 'accueil' : b.dataset.onglet}));
 $('#fab').onclick = () => {
@@ -923,6 +953,7 @@ $('#champ-recherche').addEventListener('input', ev => {
    7. DÉMARRAGE
    ========================================================= */
 charger();
+try{ history.replaceState({p:0, vue:{ecran:'accueil'}}, ''); }catch(e){}
 Drive.demarrer();
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
