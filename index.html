@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1E5F74">
+<title>Inventaire</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icone-192.png">
+<link rel="apple-touch-icon" href="./icone-192.png">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{
+  --fond:#F6F7F8; --carte:#FFFFFF; --encre:#161B1F; --gris:#79858C; --gris-clair:#E2E7EA;
+  --accent:#1E5F74; --danger:#A8262B;
+  --c-ps:#123D8C; --c-nin:#C4162B; --c-xbox:#0E6B22; --c-neutre:#59636B;
+  --c-societe:#B26A18; --c-livre:#6A4C93; --c-materiel:#1E5F74; --c-figurine:#A83262;
+  --display:'Oswald','Arial Narrow',Impact,sans-serif;
+  --corps:'Karla','Segoe UI',system-ui,-apple-system,sans-serif;
+  --mono:ui-monospace,'Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overscroll-behavior:none}
+body{
+  background:var(--fond);color:var(--encre);font-family:var(--corps);
+  display:flex;flex-direction:column;overflow:hidden;
+  padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);
+}
+button,input,select{font-family:inherit;font-size:inherit;color:inherit}
+
+#barre{background:var(--carte);border-bottom:1px solid var(--gris-clair);
+  padding:12px 16px 10px;display:flex;align-items:center;gap:11px;flex:0 0 auto}
+#retour{background:none;border:none;font-size:22px;line-height:1;color:var(--accent);
+  display:none;padding:0 2px;cursor:pointer}
+#titre{font-family:var(--display);font-weight:600;text-transform:uppercase;letter-spacing:.04em;
+  font-size:19px;line-height:1.1;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#compte{font-family:var(--mono);font-size:11px;color:var(--gris);flex:0 0 auto}
+
+#pastille{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;
+  font-size:11px;color:var(--gris);background:var(--fond);border:1px solid var(--gris-clair);
+  flex:0 0 auto;cursor:pointer;max-width:140px;overflow:hidden;white-space:nowrap}
+#pastille span:last-child{overflow:hidden;text-overflow:ellipsis}
+.point{width:7px;height:7px;border-radius:50%;background:var(--gris);flex:0 0 7px}
+.point.ok{background:#2E9E5B} .point.occupe{background:var(--accent);animation:pulse 1s infinite}
+.point.hs{background:var(--danger)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+.recherche{margin:12px 16px 0;position:relative;flex:0 0 auto}
+.recherche input{width:100%;padding:10px 12px 10px 34px;background:var(--carte);
+  border:1px solid var(--gris-clair);border-radius:8px;font-size:14px;outline:none}
+.recherche input:focus{border-color:var(--accent)}
+.recherche::before{content:"⌕";position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  color:var(--gris);font-size:17px}
+
+#corps{flex:1;overflow-y:auto;padding:12px 16px 24px;-webkit-overflow-scrolling:touch}
+
+.rayon{background:var(--carte);border:1px solid var(--gris-clair);border-radius:10px;
+  padding:12px 13px 0;margin-bottom:10px;cursor:pointer}
+.rayon:active{background:#F0F3F5}
+.rayon .titre{display:flex;align-items:baseline;justify-content:space-between}
+.rayon .titre h3{font-family:var(--display);font-weight:500;text-transform:uppercase;
+  letter-spacing:.05em;font-size:15px}
+.rayon .titre span{font-family:var(--mono);font-size:12px;color:var(--gris)}
+.rayon .sous{font-size:11.5px;color:var(--gris);margin-top:3px;line-height:1.4;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.etagere{display:flex;align-items:flex-end;gap:2px;height:34px;margin-top:10px}
+.dos{border-radius:1px 1px 0 0;min-width:2px}
+.plateau{height:3px;background:#20272C;border-radius:1px;margin-bottom:12px}
+.placeholder{width:100%;border:1px dashed #C3CBD0;height:22px;border-radius:3px;
+  display:flex;align-items:center;justify-content:center;font-size:10.5px;color:#9AA5AB}
+
+.ligne{display:flex;align-items:center;gap:11px;background:var(--carte);
+  border:1px solid var(--gris-clair);border-radius:8px;padding:11px 12px;margin-bottom:7px;cursor:pointer}
+.ligne:active{background:#F0F3F5}
+.ligne .marque{width:5px;height:26px;border-radius:2px;flex:0 0 5px}
+.ligne .nom{font-family:var(--display);text-transform:uppercase;letter-spacing:.04em;
+  font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ligne .n{font-family:var(--mono);font-size:12px;color:var(--gris);flex:0 0 auto}
+
+.objet{display:flex;align-items:center;gap:10px;padding:11px 2px;
+  border-bottom:1px solid #EAEEF0;font-size:14px;line-height:1.35;cursor:pointer}
+.objet:active{background:#EFF2F4}
+.objet .puce{width:3px;height:17px;border-radius:2px;flex:0 0 3px}
+.objet .txt{flex:1;word-break:break-word}
+.objet .chemin{display:block;font-size:11px;color:var(--gris);margin-top:2px}
+.objet .menu{color:#B4BDC2;font-size:16px;padding:0 4px;flex:0 0 auto}
+
+.vide{text-align:center;color:var(--gris);font-size:13.5px;line-height:1.6;padding:38px 20px}
+.titre-groupe{font-family:var(--display);text-transform:uppercase;letter-spacing:.13em;
+  font-size:10.5px;color:var(--gris);margin:16px 0 7px}
+.titre-groupe:first-child{margin-top:2px}
+
+.champ{margin-bottom:14px}
+.champ label{display:block;font-family:var(--display);text-transform:uppercase;
+  letter-spacing:.13em;font-size:10px;color:var(--gris);margin-bottom:5px}
+.champ select,.champ input[type=text]{width:100%;background:var(--carte);border:1px solid #CFD7DB;
+  border-radius:8px;padding:12px;font-size:14px;outline:none;appearance:none}
+.champ select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' stroke='%23A9B3B8' stroke-width='2' fill='none'/></svg>");
+  background-repeat:no-repeat;background-position:right 13px center;padding-right:34px}
+.champ select:focus,.champ input:focus{border-color:var(--accent)}
+.bouton{width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:14px;
+  font-family:var(--display);text-transform:uppercase;letter-spacing:.1em;font-size:13px;
+  font-weight:500;cursor:pointer;margin-top:4px}
+.bouton:active{opacity:.85}
+.bouton.secondaire{background:var(--carte);color:var(--accent);border:1px solid #C3D2D8}
+.bouton.danger{background:var(--carte);color:var(--danger);border:1px solid #E4C6C7}
+.bouton.neutre{background:var(--carte);color:var(--gris);border:1px solid var(--gris-clair)}
+.aide{font-size:12px;color:var(--gris);margin-top:10px;line-height:1.5}
+.section{margin-top:26px;border-top:1px solid var(--gris-clair);padding-top:18px}
+.compte-ligne{display:flex;align-items:center;gap:12px;margin:10px 0 14px}
+.avatar{width:38px;height:38px;border-radius:50%;background:#E7EEF0;color:var(--accent);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:0 0 38px}
+
+#onglets{display:flex;background:var(--carte);border-top:1px solid var(--gris-clair);flex:0 0 auto}
+#onglets button{flex:1;background:none;border:none;padding:11px 0 13px;font-family:var(--display);
+  text-transform:uppercase;letter-spacing:.09em;font-size:10.5px;color:#9AA5AB;cursor:pointer}
+#onglets button.actif{color:var(--accent);box-shadow:inset 0 2px 0 var(--accent)}
+
+#fab{position:fixed;right:16px;bottom:calc(70px + env(safe-area-inset-bottom));width:52px;height:52px;
+  border-radius:50%;background:var(--accent);color:#fff;border:none;display:none;
+  align-items:center;justify-content:center;font-size:30px;font-weight:300;
+  box-shadow:0 5px 14px rgba(30,95,116,.4);cursor:pointer;z-index:20;line-height:0}
+
+#voile{position:fixed;inset:0;background:rgba(16,22,26,.45);display:none;z-index:40;align-items:flex-end}
+#voile.ouvert{display:flex}
+#feuille{width:100%;background:var(--carte);border-radius:14px 14px 0 0;
+  padding:20px 18px calc(26px + env(safe-area-inset-bottom));max-height:85%;overflow-y:auto}
+#feuille h4{font-family:var(--display);text-transform:uppercase;letter-spacing:.06em;
+  font-size:16px;margin-bottom:4px;line-height:1.25}
+#feuille .ss-titre{font-size:12px;color:var(--gris);margin-bottom:16px}
+#feuille .bouton{margin-top:9px}
+
+#toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom));
+  transform:translateX(-50%) translateY(12px);background:#20272C;color:#fff;padding:11px 18px;
+  border-radius:22px;font-size:13px;opacity:0;pointer-events:none;transition:.22s;z-index:60;
+  max-width:90vw;text-align:center}
+#toast.visible{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* porte d'entrée */
+#porte{position:fixed;inset:0;background:var(--fond);z-index:100;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;padding:32px 26px;text-align:center}
+#porte .marque{font-family:var(--display);text-transform:uppercase;letter-spacing:.22em;
+  font-size:11px;color:var(--accent);margin-bottom:8px}
+#porte h1{font-family:var(--display);text-transform:uppercase;font-weight:600;
+  font-size:32px;letter-spacing:.02em;margin-bottom:14px}
+#porte p{font-size:14px;color:var(--gris);line-height:1.6;max-width:34ch;margin-bottom:26px}
+#porte .rangee{display:flex;gap:3px;align-items:flex-end;height:44px;margin-bottom:26px}
+#porte .rangee div{width:9px;border-radius:1px 1px 0 0}
+.gbouton{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:300px;
+  padding:13px;border-radius:10px;background:#fff;color:#1f1f1f;font-weight:600;font-size:14.5px;
+  border:1px solid #D3DADE;cursor:pointer}
+.gbouton:active{background:#EEE}
+#porte .note{font-size:11.5px;color:#9AA5AB;margin-top:18px;max-width:32ch;line-height:1.5}
+</style>
+</head>
+<body>
+
+<div id="barre">
+  <button id="retour" aria-label="Retour">←</button>
+  <h1 id="titre">Inventaire</h1>
+  <span id="compte"></span>
+  <button id="pastille"><span class="point"></span><span>—</span></button>
+</div>
+
+<div class="recherche" id="zone-recherche">
+  <input id="champ-recherche" type="text" placeholder="Chercher…" autocomplete="off">
+</div>
+
+<div id="corps"></div>
+<button id="fab" aria-label="Ajouter">+</button>
+
+<div id="onglets">
+  <button data-onglet="etageres" class="actif">Étagères</button>
+  <button data-onglet="recherche">Chercher</button>
+  <button data-onglet="ajouter">Ajouter</button>
+  <button data-onglet="reglages">Réglages</button>
+</div>
+
+<div id="voile"><div id="feuille"></div></div>
+<div id="toast"></div>
+
+<div id="porte">
+  <div class="rangee">
+    <div style="background:var(--c-ps);height:100%"></div>
+    <div style="background:var(--c-ps);height:78%"></div>
+    <div style="background:var(--c-nin);height:92%"></div>
+    <div style="background:var(--c-xbox);height:64%"></div>
+    <div style="background:var(--c-societe);height:84%"></div>
+    <div style="background:var(--c-livre);height:100%"></div>
+    <div style="background:var(--c-figurine);height:70%"></div>
+  </div>
+  <div class="marque">Collection</div>
+  <h1>Inventaire</h1>
+  <p id="porte-texte">Connecte ton compte Google : ton inventaire se synchronise ensuite tout seul entre ton téléphone et ton PC.</p>
+  <button class="gbouton" id="porte-bouton">
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.85.86-3.04.86-2.34 0-4.32-1.58-5.03-3.71H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.71A5.4 5.4 0 0 1 3.68 9c0-.59.1-1.17.29-1.71V4.96H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.04l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.96l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
+    <span>Se connecter avec Google</span>
+  </button>
+  <p class="note" id="porte-note">La première fois, Google affiche un avertissement « application non vérifiée » : c'est normal pour une app personnelle.</p>
+</div>
+
+<script>
+/* =========================================================
+   0. CONSTANTES
+   ========================================================= */
+const SEED = [{"id":"cat-jeux-video","nom":"Jeux vidéo","couleur":"ps","maj":1,"sous":[{"id":"jv-playstation-5","nom":"PlayStation 5","couleur":"ps","maj":1,"objets":[{"id":"jv-playstation-5-000-returnal","nom":"Returnal","maj":1},{"id":"jv-playstation-5-001-jedi-survi","nom":"Jedi Survivor","maj":1},{"id":"jv-playstation-5-002-sackboy-a","nom":"Sackboy : A Big Adventure","maj":1},{"id":"jv-playstation-5-003-demon-s-so","nom":"Demon's Souls","maj":1},{"id":"jv-playstation-5-004-kena-bridg","nom":"Kena Bridge of Spirit","maj":1},{"id":"jv-playstation-5-005-horizon-fo","nom":"Horizon Forbidden West","maj":1},{"id":"jv-playstation-5-006-ratchet-cl","nom":"Ratchet & Clank : Rift Apart","maj":1},{"id":"jv-playstation-5-007-spiderman","nom":"Spiderman Miles Morales","maj":1},{"id":"jv-playstation-5-008-spiderman","nom":"Spiderman 2","maj":1},{"id":"jv-playstation-5-009-guardians","nom":"Guardians of the Galaxy","maj":1},{"id":"jv-playstation-5-010-final-fant","nom":"Final Fantasy XVI","maj":1},{"id":"jv-playstation-5-011-hogwarts-l","nom":"Hogwarts Legacy","maj":1},{"id":"jv-playstation-5-012-god-of-war","nom":"God of War : Ragnarok","maj":1},{"id":"jv-playstation-5-013-star-wars","nom":"Star Wars Outlaws","maj":1},{"id":"jv-playstation-5-014-persona-5","nom":"Persona 5 Royal","maj":1},{"id":"jv-playstation-5-015-stellar-bl","nom":"Stellar Blade","maj":1},{"id":"jv-playstation-5-016-dragon-bal","nom":"Dragon Ball Sparking Zero","maj":1},{"id":"jv-playstation-5-017-astrobot-v","nom":"Astrobot - version Japonaise","maj":1},{"id":"jv-playstation-5-018-metaphor-r","nom":"Metaphor : Refantazio","maj":1},{"id":"jv-playstation-5-019-ghost-of-y","nom":"Ghost of Yotei","maj":1}]},{"id":"jv-playstation-4","nom":"PlayStation 4","couleur":"ps","maj":1,"objets":[{"id":"jv-playstation-4-000-uncharted","nom":"Uncharted : The Nathan Drake Collection JAP","maj":1},{"id":"jv-playstation-4-001-bloodborn","nom":"Bloodborn","maj":1},{"id":"jv-playstation-4-002-dreams","nom":"Dreams","maj":1},{"id":"jv-playstation-4-003-detroit-be","nom":"Detroit : Become Human - Prêté à Liam","maj":1},{"id":"jv-playstation-4-004-horizon-ze","nom":"Horizon Zero Down - Prêté à Liam","maj":1},{"id":"jv-playstation-4-005-death-stra","nom":"Death Stranding - Prêté à Liam","maj":1},{"id":"jv-playstation-4-006-killzone-s","nom":"Killzone Shadow Fall","maj":1},{"id":"jv-playstation-4-007-spiderman","nom":"Spiderman - Prêté à Liam","maj":1},{"id":"jv-playstation-4-008-ghost-of-t","nom":"Ghost of Tsushima","maj":1},{"id":"jv-playstation-4-009-just-cause","nom":"Just Cause 3 - Prêté à Liam","maj":1},{"id":"jv-playstation-4-010-the-last-o","nom":"The Last of Us Remastered - Prêté à Liam","maj":1},{"id":"jv-playstation-4-011-mass-effec","nom":"Mass Effect Andromeda - Prêté à Liam","maj":1},{"id":"jv-playstation-4-012-no-mans-sk","nom":"No Man’s Sky - Prêté à Liam","maj":1},{"id":"jv-playstation-4-013-persona-5","nom":"Persona 5","maj":1},{"id":"jv-playstation-4-014-watch-dogs","nom":"Watch dogs 2 - Prêté à Liam","maj":1},{"id":"jv-playstation-4-015-assassins","nom":"Assassin’s Creed IV Black Flag","maj":1},{"id":"jv-playstation-4-016-mad-max-pr","nom":"Mad Max - Prêté à Liam","maj":1},{"id":"jv-playstation-4-017-final-fant","nom":"Final Fantasy XV - Prêté à Liam","maj":1},{"id":"jv-playstation-4-018-prey-prete","nom":"Prey - Prêté à Liam","maj":1},{"id":"jv-playstation-4-019-god-of-war","nom":"God of War - Prêté à Liam","maj":1},{"id":"jv-playstation-4-020-the-divisi","nom":"The Division","maj":1},{"id":"jv-playstation-4-021-wolfenstei","nom":"Wolfenstein The New Order - Prêté à Liam","maj":1},{"id":"jv-playstation-4-022-titanfall","nom":"Titanfall 2 - Prêté à Liam","maj":1},{"id":"jv-playstation-4-023-nier-autom","nom":"Nier Automata - Prêté à Liam","maj":1},{"id":"jv-playstation-4-024-doom-prete","nom":"Doom - Prêté à Liam","maj":1},{"id":"jv-playstation-4-025-assassins","nom":"Assassin’s Creed Unity","maj":1},{"id":"jv-playstation-4-026-injustice","nom":"Injustice 2","maj":1},{"id":"jv-playstation-4-027-red-dead-r","nom":"Red Dead Redemption II - - Prêté à Liam","maj":1},{"id":"jv-playstation-4-028-metal-gear","nom":"Metal Gear Solid V : The Phantom Pain - Prêté à Liam","maj":1},{"id":"jv-playstation-4-029-fallout-4","nom":"Fallout 4 - Prêté à Liam","maj":1},{"id":"jv-playstation-4-030-la-terre-d","nom":"La Terre Du Milieu : L’ombre Du Mordor - Prêté à Liam","maj":1},{"id":"jv-playstation-4-031-dishonored","nom":"Dishonored 2","maj":1}]},{"id":"jv-playstation-3","nom":"PlayStation 3","couleur":"ps","maj":1,"objets":[{"id":"jv-playstation-3-000-binary-dom","nom":"Binary Domain","maj":1},{"id":"jv-playstation-3-001-remember-m","nom":"Remember Me","maj":1},{"id":"jv-playstation-3-002-resistance","nom":"Resistance 2","maj":1},{"id":"jv-playstation-3-003-batman-ark","nom":"Batman Arkham Origins","maj":1},{"id":"jv-playstation-3-004-borderland","nom":"Borderlands 2","maj":1},{"id":"jv-playstation-3-005-burnout-pa","nom":"Burnout Paradise The Ultimate Box","maj":1},{"id":"jv-playstation-3-006-littlebigp","nom":"LittleBigPlanet","maj":1},{"id":"jv-playstation-3-007-uncharted","nom":"Uncharted : Drake's Fortune","maj":1},{"id":"jv-playstation-3-008-rayman-ori","nom":"Rayman Origins","maj":1},{"id":"jv-playstation-3-009-final-fant","nom":"Final Fantasy XIII","maj":1},{"id":"jv-playstation-3-010-assassin-s","nom":"Assassin's Creed Revelations","maj":1}]},{"id":"jv-playstation-2","nom":"PlayStation 2","couleur":"ps","maj":1,"objets":[{"id":"jv-playstation-2-000-sly-raccoo","nom":"Sly Raccoon","maj":1},{"id":"jv-playstation-2-001-sly-2-asso","nom":"Sly 2 : Association de Voleurs","maj":1},{"id":"jv-playstation-2-002-sly-3","nom":"Sly 3","maj":1},{"id":"jv-playstation-2-003-star-wars","nom":"Star Wars Battlefront II","maj":1},{"id":"jv-playstation-2-004-heros-de-l","nom":"Héros de la Ligue des Justiciers","maj":1},{"id":"jv-playstation-2-005-ratchet-cl","nom":"Ratchet & Clank 3","maj":1},{"id":"jv-playstation-2-006-spider-man","nom":"Spider-Man 3","maj":1},{"id":"jv-playstation-2-007-god-of-war","nom":"God of War II : Édition Spéciale","maj":1},{"id":"jv-playstation-2-008-prince-of","nom":"Prince of Persia : Les Sables du Temps","maj":1},{"id":"jv-playstation-2-009-bob-l-epon","nom":"Bob l'éponge : Le film","maj":1},{"id":"jv-playstation-2-010-worms-4-ma","nom":"Worms 4 : Mayhem","maj":1},{"id":"jv-playstation-2-011-tekken-tag","nom":"Tekken Tag Tournament","maj":1},{"id":"jv-playstation-2-012-les-indest","nom":"Les indestructibles","maj":1},{"id":"jv-playstation-2-013-marvel-ult","nom":"Marvel Ultimate Alliance","maj":1},{"id":"jv-playstation-2-014-black","nom":"Black","maj":1}]},{"id":"jv-nintendo-switc","nom":"Nintendo Switch 2","couleur":"nin","maj":1,"objets":[{"id":"jv-nintendo-switc-000-donkey-kon","nom":"Donkey Kong Bananza","maj":1}]},{"id":"jv-nintendo-switc","nom":"Nintendo Switch","couleur":"nin","maj":1,"objets":[{"id":"jv-nintendo-switc-000-bayonetta","nom":"Bayonetta 3","maj":1},{"id":"jv-nintendo-switc-001-the-legend","nom":"The Legend of Zelda : Link's Awakening","maj":1},{"id":"jv-nintendo-switc-002-ring-fit-a","nom":"Ring Fit Adventure","maj":1},{"id":"jv-nintendo-switc-003-super-mari","nom":"Super Mario 3D All-Stars","maj":1},{"id":"jv-nintendo-switc-004-super-mari","nom":"Super Mario 3D World + Bowser's Fury","maj":1},{"id":"jv-nintendo-switc-005-bayonetta","nom":"Bayonetta + Bayonetta 2","maj":1},{"id":"jv-nintendo-switc-006-the-legend","nom":"The Legend of Zelda : Skyward Sword HD","maj":1},{"id":"jv-nintendo-switc-007-super-smas","nom":"Super Smash Bros Ultimate","maj":1},{"id":"jv-nintendo-switc-008-hyrule-war","nom":"Hyrule Warriors : Definitive Edition","maj":1},{"id":"jv-nintendo-switc-009-fire-emble","nom":"Fire Emblem : Three Houses","maj":1},{"id":"jv-nintendo-switc-010-the-legend","nom":"The Legend of Zelda : Breath of the Wild","maj":1},{"id":"jv-nintendo-switc-011-mario-kart","nom":"Mario Kart 8 Deluxe","maj":1},{"id":"jv-nintendo-switc-012-luigi-s-ma","nom":"Luigi's Mansion 3","maj":1},{"id":"jv-nintendo-switc-013-pokemon-ep","nom":"Pokémon Épée","maj":1},{"id":"jv-nintendo-switc-014-the-legend","nom":"The Legend of Zelda : Tears of the Kingdom","maj":1},{"id":"jv-nintendo-switc-015-super-mari","nom":"Super Mario Bros Wonder","maj":1},{"id":"jv-nintendo-switc-016-super-mari","nom":"Super Mario RPG","maj":1},{"id":"jv-nintendo-switc-017-the-legend","nom":"The Legend of Zelda : Echoes of Wisdom JAP","maj":1},{"id":"jv-nintendo-switc-018-metroid-pr","nom":"Metroid Prime Remastered","maj":1},{"id":"jv-nintendo-switc-019-paper-mari","nom":"Paper Mario : La Porte Millénaire","maj":1},{"id":"jv-nintendo-switc-020-super-mari","nom":"Super Mario Maker 2","maj":1},{"id":"jv-nintendo-switc-021-super-mari","nom":"Super Mario Galaxy + Super Mario Galaxy 2","maj":1},{"id":"jv-nintendo-switc-022-kirby-et-l","nom":"Kirby et le monde oublié","maj":1},{"id":"jv-nintendo-switc-023-mario-the","nom":"Mario + The Lapins Crétins Kingdom Battle","maj":1}]},{"id":"jv-xbox-360","nom":"Xbox 360","couleur":"xbox","maj":1,"objets":[{"id":"jv-xbox-360-000-strangleho","nom":"Stranglehold","maj":1},{"id":"jv-xbox-360-001-split-seco","nom":"Split/Second Velocity","maj":1},{"id":"jv-xbox-360-002-driver-san","nom":"DRIVER : San Francisco","maj":1},{"id":"jv-xbox-360-003-max-payne","nom":"Max Payne 3","maj":1},{"id":"jv-xbox-360-004-call-of-du","nom":"Call of Duty : Modern Warfare 2","maj":1},{"id":"jv-xbox-360-005-call-of-du","nom":"Call of Duty : Ghosts","maj":1},{"id":"jv-xbox-360-006-call-of-du","nom":"Call of Duty : World at War","maj":1},{"id":"jv-xbox-360-007-call-of-du","nom":"Call of Duty : Black Ops","maj":1},{"id":"jv-xbox-360-008-call-of-du","nom":"Call of Duty : Black Ops 2","maj":1},{"id":"jv-xbox-360-009-grand-thef","nom":"Grand Theft Auto IV","maj":1},{"id":"jv-xbox-360-010-lego-batma","nom":"Lego Batman 2","maj":1},{"id":"jv-xbox-360-011-rise-of-th","nom":"Rise of the Tomb Raider","maj":1},{"id":"jv-xbox-360-012-call-of-du","nom":"Call of Duty : Modern Warfare 3","maj":1},{"id":"jv-xbox-360-013-gear-of-wa","nom":"Gear of War 3","maj":1},{"id":"jv-xbox-360-014-crackdown","nom":"Crackdown","maj":1},{"id":"jv-xbox-360-015-halo-3","nom":"Halo 3","maj":1},{"id":"jv-xbox-360-016-halo-reach","nom":"Halo Reach","maj":1}]},{"id":"jv-xbox-one","nom":"Xbox One","couleur":"xbox","maj":1,"objets":[{"id":"jv-xbox-one-000-call-of-du","nom":"Call of Duty : Advanced Warfare","maj":1},{"id":"jv-xbox-one-001-call-of-du","nom":"Call of Duty : Modern Warfare 1","maj":1},{"id":"jv-xbox-one-002-call-of-du","nom":"Call of Duty : Modern Warfare 2","maj":1},{"id":"jv-xbox-one-003-call-of-du","nom":"Call of Duty : Modern Warfare 3","maj":1},{"id":"jv-xbox-one-004-gears-of-w","nom":"Gears of War : Ultimate edition","maj":1},{"id":"jv-xbox-one-005-gears-5","nom":"Gears 5","maj":1},{"id":"jv-xbox-one-006-assassin-s","nom":"Assassin's Creed : Odyssey","maj":1}]},{"id":"jv-nintendo-3ds","nom":"Nintendo 3DS","couleur":"nin","maj":1,"objets":[{"id":"jv-nintendo-3ds-000-fire-emble","nom":"Fire Emblem Awakening","maj":1},{"id":"jv-nintendo-3ds-001-pokemon-ru","nom":"Pokémon Rubis Oméga","maj":1},{"id":"jv-nintendo-3ds-002-dragon-bal","nom":"Dragon Ball Fusion","maj":1},{"id":"jv-nintendo-3ds-003-super-smas","nom":"Super Smash Bros","maj":1},{"id":"jv-nintendo-3ds-004-professeur","nom":"Professeur Layton et le masque des miracles","maj":1},{"id":"jv-nintendo-3ds-005-professeur","nom":"Professeur Layton et l'héritage des Aslantes","maj":1},{"id":"jv-nintendo-3ds-006-l-aventure","nom":"L'aventure Layton : Katrielle et la conspiration des milliardaires","maj":1},{"id":"jv-nintendo-3ds-007-the-legend","nom":"The Legend of Zelda : Ocarina of Time 3D","maj":1}]},{"id":"jv-nintendo-ds","nom":"Nintendo DS","couleur":"nin","maj":1,"objets":[{"id":"jv-nintendo-ds-000-professeur","nom":"Professeur Layton et la boîte de Pandore","maj":1},{"id":"jv-nintendo-ds-001-professeur","nom":"Professeur Layton et le destin perdu","maj":1},{"id":"jv-nintendo-ds-002-professeur","nom":"Professeur Layton et l'appel du Spectre","maj":1},{"id":"jv-nintendo-ds-003-pokemon-ve","nom":"Pokémon Version Platine","maj":1},{"id":"jv-nintendo-ds-004-star-wars","nom":"Star Wars : Épisode 3","maj":1}]},{"id":"jv-pc","nom":"PC","couleur":"neutre","maj":1,"objets":[{"id":"jv-pc-000-spore","nom":"Spore","maj":1},{"id":"jv-pc-001-spore-aven","nom":"Spore Aventures Galactiques","maj":1},{"id":"jv-pc-002-max-payne","nom":"Max Payne 2","maj":1},{"id":"jv-pc-003-sim-city-4","nom":"Sim City 4","maj":1}]},{"id":"jv-wii","nom":"Wii","couleur":"nin","maj":1,"objets":[{"id":"jv-wii-000-the-legend","nom":"The Legend of Zleda : Twilight Princess","maj":1},{"id":"jv-wii-001-link-s-cro","nom":"Link's Crossbow Training","maj":1},{"id":"jv-wii-002-super-mari","nom":"Super Mario Galaxy","maj":1},{"id":"jv-wii-003-animal-cro","nom":"Animal Crossing : À nous la belle ville !","maj":1},{"id":"jv-wii-004-new-super","nom":"New Super Mario Bros Wii","maj":1}]}]},{"id":"cat-jeux-societe","nom":"Jeux de société","couleur":"societe","maj":1,"sous":[{"id":"js-jeux-de-cartes","nom":"Jeux de cartes","couleur":"societe","maj":1,"objets":[{"id":"js-jeux-de-cartes-000-codenames","nom":"CodeNames","maj":1},{"id":"js-jeux-de-cartes-001-le-sudoku","nom":"Le sudoku Jeu","maj":1},{"id":"js-jeux-de-cartes-002-unstable-u","nom":"Unstable Unicorns","maj":1},{"id":"js-jeux-de-cartes-003-bang","nom":"BANG !","maj":1},{"id":"js-jeux-de-cartes-004-monopoly-d","nom":"Monopoly Deal","maj":1},{"id":"js-jeux-de-cartes-005-speed-bac","nom":"Speed Bac : Le Carnage","maj":1},{"id":"js-jeux-de-cartes-006-skyjo","nom":"Skyjo","maj":1},{"id":"js-jeux-de-cartes-007-limite-lim","nom":"Limite Limite","maj":1},{"id":"js-jeux-de-cartes-008-time-s-up","nom":"Time's up","maj":1},{"id":"js-jeux-de-cartes-009-la-boite-a","nom":"La boîte à Quiz Jeux vidéo","maj":1},{"id":"js-jeux-de-cartes-010-trivial-pu","nom":"Trivial Pursuit Harry Potter","maj":1},{"id":"js-jeux-de-cartes-011-skull-king","nom":"Skull King","maj":1},{"id":"js-jeux-de-cartes-012-motus-et-b","nom":"Motus et bouche cousue","maj":1},{"id":"js-jeux-de-cartes-013-the-bindin","nom":"The Binding of Isaac : Four souls édition 1","maj":1},{"id":"js-jeux-de-cartes-014-the-bindin","nom":"The Binding of Isaac : Four souls édition 2","maj":1},{"id":"js-jeux-de-cartes-015-exploding","nom":"Exploding Kitten : Édition Festive","maj":1},{"id":"js-jeux-de-cartes-016-exploding","nom":"Exploding Kitten : Édition NSFW","maj":1},{"id":"js-jeux-de-cartes-017-trio","nom":"Trio","maj":1},{"id":"js-jeux-de-cartes-018-munchkin","nom":"Munchkin","maj":1},{"id":"js-jeux-de-cartes-019-niwashi","nom":"Niwashi","maj":1},{"id":"js-jeux-de-cartes-020-le-jeu-sci","nom":"Le jeu Science & Vie","maj":1},{"id":"js-jeux-de-cartes-021-uno","nom":"UNO","maj":1},{"id":"js-jeux-de-cartes-022-malette-de","nom":"Malette de Poker","maj":1},{"id":"js-jeux-de-cartes-023-6-qui-pren","nom":"6 qui prends","maj":1}]},{"id":"js-jeux-de-platea","nom":"Jeux de plateau","couleur":"societe","maj":1,"objets":[{"id":"js-jeux-de-platea-000-galerapago","nom":"Galérapagos","maj":1},{"id":"js-jeux-de-platea-001-le-seigneu","nom":"Le seigneur des anneaux : Jusqu'au Mordor","maj":1},{"id":"js-jeux-de-platea-002-one-piece","nom":"One Piece Adventure Island","maj":1},{"id":"js-jeux-de-platea-003-naruto-nin","nom":"Naruto Ninja Arena","maj":1},{"id":"js-jeux-de-platea-004-le-jeu-de","nom":"Le jeu de la scolarité","maj":1},{"id":"js-jeux-de-platea-005-7-wonders","nom":"7 Wonders","maj":1},{"id":"js-jeux-de-platea-006-7-wonders","nom":"7 Wonders Cities","maj":1},{"id":"js-jeux-de-platea-007-god-of-war","nom":"God of War : Le jeu de cartes","maj":1},{"id":"js-jeux-de-platea-008-tmtc2","nom":"TMTC2","maj":1},{"id":"js-jeux-de-platea-009-concept","nom":"Concept","maj":1}]},{"id":"js-escape-game","nom":"Escape Game","couleur":"societe","maj":1,"objets":[{"id":"js-escape-game-000-escape-gam","nom":"Escape Game : Le piège de l'espace","maj":1},{"id":"js-escape-game-001-unlock-sta","nom":"Unlock Star Wars","maj":1},{"id":"js-escape-game-002-chronicles","nom":"Chronicles of Crime 2400","maj":1},{"id":"js-escape-game-003-unlock-sup","nom":"Unlock Supernatural Adventure","maj":1},{"id":"js-escape-game-004-unlock-sho","nom":"Unlock Short : A la poursuite de Cabrakan","maj":1},{"id":"js-escape-game-005-unlock-sho","nom":"Unlock Short : Le reveil de la momie","maj":1},{"id":"js-escape-game-006-unlock-sho","nom":"Unlock Short : Dans la tête de Sherlock Holmes","maj":1},{"id":"js-escape-game-007-unlock-sho","nom":"Unlock Short : Les secrets de la pieuvre","maj":1},{"id":"js-escape-game-008-unlock-sho","nom":"Unlock Short : Panique en cuisine","maj":1},{"id":"js-escape-game-009-unlock-sho","nom":"Unlock Short : Le vol de l'ange","maj":1},{"id":"js-escape-game-010-unlock-sho","nom":"Unlock Short : L'ascension","maj":1},{"id":"js-escape-game-011-unlock-sho","nom":"Unlock Short : La voie du sabre","maj":1}]},{"id":"js-tcg","nom":"TCG","couleur":"societe","maj":1,"objets":[{"id":"js-tcg-000-one-piece","nom":"One Piece : Deck Don Quijote Doflamingo","maj":1},{"id":"js-tcg-001-one-piece","nom":"One Piece : Deck Gear 5th","maj":1},{"id":"js-tcg-002-one-piece","nom":"One Piece : Deck Barbe Blanche JAP","maj":1},{"id":"js-tcg-003-one-piece","nom":"One Piece : Deck Barbe Blanche JAP","maj":1},{"id":"js-tcg-004-one-piece","nom":"One Piece : Deck 3D/2Y","maj":1},{"id":"js-tcg-005-dragon-bal","nom":"Dragon Ball Fusion World : Goku JAP","maj":1},{"id":"js-tcg-006-lorcana-de","nom":"Lorcana : Deck Aurore Saphir & Simba Acier","maj":1},{"id":"js-tcg-007-lorcana-de","nom":"Lorcana : Deck Vaiana Ambre & Mickey Mouse Améthyste","maj":1},{"id":"js-tcg-008-lorcana-de","nom":"Lorcana : Deck Cruella d'Enfer Emeraude & Aladdin Rubis","maj":1},{"id":"js-tcg-009-lorcana-de","nom":"Lorcana : Deck Merlin & Tiana","maj":1},{"id":"js-tcg-010-lorcana-de","nom":"Lorcana : Deck Reine & Gaston","maj":1},{"id":"js-tcg-011-lorcana-de","nom":"Lorcana : Deck Vaiana Rubis & Picsou Saphir","maj":1},{"id":"js-tcg-012-lorcana-de","nom":"Lorcana : Deck 101 Dalmatiens Ambre & Peter Pan Émeraude","maj":1},{"id":"js-tcg-013-lorcana-de","nom":"Lorcana : Deck Mirabelle Madrigal Ambre & Bruno Madrigal Améthyste","maj":1},{"id":"js-tcg-014-lorcana-de","nom":"Lorcana : Deck Anna Saphir & Hercule Acier","maj":1},{"id":"js-tcg-015-lorcana-de","nom":"Lorcana : Deck Elsa Améthyste & Ralf Rubis","maj":1},{"id":"js-tcg-016-lorcana-de","nom":"Lorcana : Deck Scar Emeraude & Kronk Acier","maj":1},{"id":"js-tcg-017-lorcana-de","nom":"Lorcana : Deck Go Go Tamago Emeraude & Gadget Saphir","maj":1},{"id":"js-tcg-018-lorcana-de","nom":"Lorcana : Deck Jim Hawkins Ambre & Tigrou Rubis","maj":1},{"id":"js-tcg-019-lorcana-de","nom":"Lorcana : Deck Prélude 1","maj":1},{"id":"js-tcg-020-lorcana-de","nom":"Lorcana : Deck Prélude 2","maj":1},{"id":"js-tcg-021-lorcana-de","nom":"Lorcana : Deck Menace des profondeurs 1","maj":1},{"id":"js-tcg-022-lorcana-de","nom":"Lorcana : Deck Menace des profondeurs 2","maj":1},{"id":"js-tcg-023-magic-comm","nom":"Magic Commander Mornebrune : Hécatombe","maj":1},{"id":"js-tcg-024-magic-comm","nom":"Magic Commander Mornebrune : Petite Frayeur","maj":1}]}]},{"id":"cat-livres","nom":"Livres","couleur":"livre","maj":1,"sous":[{"id":"li-roman","nom":"Roman","couleur":"livre","maj":1,"objets":[{"id":"li-roman-000-solo-level","nom":"Solo Leveling I","maj":1},{"id":"li-roman-001-l-assassin","nom":"L'Assassin Royal 1","maj":1},{"id":"li-roman-002-l-assassin","nom":"L'Assassin Royal 2","maj":1},{"id":"li-roman-003-l-assassin","nom":"L'Assassin Royal 3","maj":1},{"id":"li-roman-004-l-assassin","nom":"L'Assassin Royal 4","maj":1},{"id":"li-roman-005-l-assassin","nom":"L'Assassin Royal 5","maj":1},{"id":"li-roman-006-l-assassin","nom":"L'Assassin Royal 6","maj":1},{"id":"li-roman-007-le-roi-en","nom":"Le Roi en Jaune","maj":1},{"id":"li-roman-008-time-rider","nom":"Time Rider 1","maj":1},{"id":"li-roman-009-le-guide-d","nom":"Le Guide du Voyageur Galactique","maj":1},{"id":"li-roman-010-timeless-d","nom":"Timeless : Diego et les Rangers du Wastlantiques","maj":1},{"id":"li-roman-011-kaamelott","nom":"Kaamelott Livre 1 - Première partie","maj":1},{"id":"li-roman-012-la-guerre","nom":"La Guerre des Clans - Cycle 1 Livre 1","maj":1},{"id":"li-roman-013-fight-club","nom":"Fight Club","maj":1},{"id":"li-roman-014-vide-qui-s","nom":"Vide qui Songe","maj":1},{"id":"li-roman-015-les-thanat","nom":"Les Thanatonautes","maj":1},{"id":"li-roman-016-la-legende","nom":"La Légende de Titus Crow Intégrale","maj":1},{"id":"li-roman-017-le-problem","nom":"Le problème à 3 corps","maj":1},{"id":"li-roman-018-la-foret-s","nom":"La forêt sombre","maj":1},{"id":"li-roman-019-la-fortere","nom":"La forteresse du chaudron noir","maj":1},{"id":"li-roman-020-dune-i","nom":"Dune I","maj":1},{"id":"li-roman-021-seul-sur-m","nom":"Seul sur Mars","maj":1},{"id":"li-roman-022-rush-1","nom":"Rush 1","maj":1},{"id":"li-roman-023-mortal-eng","nom":"Mortal Engine 1","maj":1},{"id":"li-roman-024-mortal-eng","nom":"Mortal Engine 2","maj":1},{"id":"li-roman-025-le-trone-d","nom":"Le trône de cendres","maj":1}]},{"id":"li-comics","nom":"Comics","couleur":"livre","maj":1,"objets":[{"id":"li-comics-000-le-problem","nom":"Le problème à trois corps","maj":1}]},{"id":"li-manga","nom":"Manga","couleur":"livre","maj":1,"objets":[{"id":"li-manga-000-vagabond","nom":"Vagabond","maj":1},{"id":"li-manga-001-solo-level","nom":"Solo Leveling 1","maj":1},{"id":"li-manga-002-solo-level","nom":"Solo Leveling 2","maj":1},{"id":"li-manga-003-solo-level","nom":"Solo Leveling 3","maj":1},{"id":"li-manga-004-solo-level","nom":"Solo Leveling 4","maj":1},{"id":"li-manga-005-solo-level","nom":"Solo Leveling 5","maj":1},{"id":"li-manga-006-solo-level","nom":"Solo Leveling 6","maj":1},{"id":"li-manga-007-solo-level","nom":"Solo Leveling 7","maj":1},{"id":"li-manga-008-solo-level","nom":"Solo Leveling 8","maj":1},{"id":"li-manga-009-solo-level","nom":"Solo Leveling 9","maj":1},{"id":"li-manga-010-bobobo-bob","nom":"Bobobo-bobobo 1","maj":1},{"id":"li-manga-011-bobobo-bob","nom":"Bobobo-bobobo 2","maj":1},{"id":"li-manga-012-bobobo-bob","nom":"Bobobo-bobobo 3","maj":1},{"id":"li-manga-013-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 4","maj":1},{"id":"li-manga-014-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 5","maj":1},{"id":"li-manga-015-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 6","maj":1},{"id":"li-manga-016-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 8","maj":1},{"id":"li-manga-017-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 9","maj":1},{"id":"li-manga-018-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 10","maj":1},{"id":"li-manga-019-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 11","maj":1},{"id":"li-manga-020-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 12","maj":1},{"id":"li-manga-021-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 13","maj":1},{"id":"li-manga-022-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 14","maj":1},{"id":"li-manga-023-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 15","maj":1},{"id":"li-manga-024-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 16","maj":1},{"id":"li-manga-025-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 17","maj":1},{"id":"li-manga-026-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 18","maj":1},{"id":"li-manga-027-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 19","maj":1},{"id":"li-manga-028-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 20","maj":1},{"id":"li-manga-029-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 21","maj":1},{"id":"li-manga-030-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 22","maj":1},{"id":"li-manga-031-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 23","maj":1},{"id":"li-manga-032-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 24","maj":1},{"id":"li-manga-033-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 25","maj":1},{"id":"li-manga-034-saiki-kusu","nom":"Saiki Kusuo no Ψ nan (JAP) 26","maj":1}]},{"id":"li-artbooks-grand","nom":"Artbooks & Grands Livres","couleur":"livre","maj":1,"objets":[{"id":"li-artbooks-grand-000-assassin-s","nom":"Assassin's Creed : L'histoire visuelle complète","maj":1},{"id":"li-artbooks-grand-001-the-art-of","nom":"The Art of Bioshock Infinite","maj":1},{"id":"li-artbooks-grand-002-the-art-of","nom":"The Art of Horizon Zero Down","maj":1},{"id":"li-artbooks-grand-003-tout-l-art","nom":"Tout l'art d'Overwatch","maj":1},{"id":"li-artbooks-grand-004-guiness-wo","nom":"Guiness World Record 2022","maj":1},{"id":"li-artbooks-grand-005-steampunk","nom":"Steampunk","maj":1},{"id":"li-artbooks-grand-006-assassin-s","nom":"Assassin's Creed : Encyclopedia","maj":1},{"id":"li-artbooks-grand-007-dragon-bal","nom":"Dragon Ball : Le super livre 1","maj":1}]},{"id":"li-non-fiction","nom":"Non-fiction","couleur":"livre","maj":1,"objets":[{"id":"li-non-fiction-000-12-regles","nom":"12 Règles pour une vie","maj":1},{"id":"li-non-fiction-001-12-nouvell","nom":"12 Nouvelles règles pour une vie","maj":1},{"id":"li-non-fiction-002-ecrire-un","nom":"Ecrire un Scénario","maj":1},{"id":"li-non-fiction-003-l-art-de-l","nom":"L'art de la Guerre","maj":1}]}]},{"id":"cat-materiel","nom":"Matériel","couleur":"materiel","maj":1,"sous":[{"id":"ma-consoles","nom":"Consoles","couleur":"materiel","maj":1,"objets":[]},{"id":"ma-peripheriques","nom":"Périphériques","couleur":"materiel","maj":1,"objets":[]},{"id":"ma-informatique","nom":"Informatique","couleur":"materiel","maj":1,"objets":[]}]},{"id":"cat-figurines","nom":"Figurines & Goodies","couleur":"figurine","maj":1,"sous":[{"id":"fi-figurines","nom":"Figurines","couleur":"figurine","maj":1,"objets":[]},{"id":"fi-peluches","nom":"Peluches","couleur":"figurine","maj":1,"objets":[]},{"id":"fi-posters","nom":"Posters","couleur":"figurine","maj":1,"objets":[]},{"id":"fi-autres-produit","nom":"Autres produits dérivés","couleur":"figurine","maj":1,"objets":[]}]}];
+
+// Même origine que Mirabilis (https://yellobie.github.io) : l'identifiant OAuth
+// existant fonctionne tel quel. Remplace-le ici si tu en crées un dédié.
+const CLIENT_ID = "816858452098-cqfb24p3km7tn54c8cu1mvbkr3506d12.apps.googleusercontent.com";
+const SCOPE     = "https://www.googleapis.com/auth/drive.file";
+const DOSSIER   = "Inventaire";
+const FICHIER   = "inventaire-data.json";
+
+const CLE_DB      = "inventaire.db";
+const CLE_TOKEN   = "inventaire.token";
+const CLE_SESSION = "inventaire.session";
+const GRACE       = 30 * 24 * 3600 * 1000;   // 30 jours d'usage hors ligne
+
+const COULEURS = {ps:'--c-ps',nin:'--c-nin',xbox:'--c-xbox',neutre:'--c-neutre',
+  societe:'--c-societe',livre:'--c-livre',materiel:'--c-materiel',figurine:'--c-figurine'};
+const col = c => `var(${COULEURS[c] || '--c-neutre'})`;
+
+let DB = null;
+let vue = {ecran:'accueil'};
+let deverrouille = false;
+
+const $ = s => document.querySelector(s);
+const corps = $('#corps');
+const maintenant = () => Date.now();
+function uid(){ return 'x' + maintenant().toString(36) + Math.random().toString(36).slice(2,7); }
+function esc(t){ return String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+let minuteur;
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('visible');
+  clearTimeout(minuteur); minuteur = setTimeout(() => t.classList.remove('visible'), 2400);
+}
+
+/* =========================================================
+   1. DONNÉES : lecture, écriture, fusion
+   ========================================================= */
+function neuf(){ return {version:1, maj:1, cats: JSON.parse(JSON.stringify(SEED))}; }
+
+function charger(){
+  try{
+    const brut = localStorage.getItem(CLE_DB);
+    if(brut){
+      const d = JSON.parse(brut);
+      if(d && Array.isArray(d.cats)){ DB = d; return; }
+    }
+  }catch(e){ console.warn(e); }
+  DB = neuf();
+  ecrireLocal();
+}
+function ecrireLocal(){
+  try{ localStorage.setItem(CLE_DB, JSON.stringify(DB)); }
+  catch(e){ toast("Mémoire du navigateur pleine — exporte ton JSON"); }
+}
+function enregistrer(){
+  DB.maj = maintenant();
+  ecrireLocal();
+  Drive.planifier();
+}
+
+/* Fusion par identifiant : la version la plus récente gagne, les suppressions
+   sont des marqueurs datés, donc rien ne « ressuscite » d'un appareil à l'autre. */
+function fusionNoeud(a, b, cleEnfants){
+  const recent = (a.maj||0) >= (b.maj||0) ? a : b;
+  const base = Object.assign({}, recent);
+  if(cleEnfants){
+    base[cleEnfants] = fusionListe(a[cleEnfants]||[], b[cleEnfants]||[],
+      cleEnfants === 'sous' ? 'objets' : null);
+  }
+  return base;
+}
+function fusionListe(la, lb, cleEnfants){
+  const m = new Map();
+  la.forEach(x => m.set(x.id, x));
+  lb.forEach(y => {
+    const x = m.get(y.id);
+    m.set(y.id, x ? fusionNoeud(x, y, cleEnfants) : y);
+  });
+  return Array.from(m.values());
+}
+function fusionner(local, distant){
+  if(!distant || !Array.isArray(distant.cats)) return local;
+  return {
+    version: 1,
+    maj: Math.max(local.maj||0, distant.maj||0),
+    cats: fusionListe(local.cats, distant.cats, 'sous')
+  };
+}
+
+/* accès filtrés (on ignore les éléments supprimés) */
+const cats     = () => DB.cats.filter(c => !c.supp);
+const cat      = id => DB.cats.find(c => c.id === id && !c.supp);
+const sousDe   = c => (c ? c.sous.filter(s => !s.supp) : []);
+const sous     = (c,id) => c && c.sous.find(s => s.id === id && !s.supp);
+const objetsDe = s => (s ? s.objets.filter(o => !o.supp) : []);
+const totalSous = s => objetsDe(s).length;
+const totalCat = c => sousDe(c).reduce((n,s) => n + totalSous(s), 0);
+const totalGlobal = () => cats().reduce((n,c) => n + totalCat(c), 0);
+const parNom = (a,b) => a.nom.localeCompare(b.nom,'fr',{sensitivity:'base',numeric:true});
+
+/* =========================================================
+   2. SYNCHRONISATION GOOGLE DRIVE
+   ========================================================= */
+const Drive = (function(){
+  let tokenClient = null, accessToken = null, tokenExpiry = 0;
+  let fileId = null, dossierId = null, email = null;
+  let etat = 'off';                 // off | connexion | synchro | ok | horsligne | erreur
+  let minuteurPush = null, minuteurRefresh = null;
+  let enCours = false, enAttente = false;
+
+  /* --- session locale : ouvrir l'app sans repasser par Google --- */
+  function session(){ try{ return JSON.parse(localStorage.getItem(CLE_SESSION) || 'null'); }catch(e){ return null; } }
+  function poserSession(mail){
+    try{ localStorage.setItem(CLE_SESSION, JSON.stringify({owner:mail, vu:maintenant()})); }catch(e){}
+  }
+  function toucherSession(){
+    const s = session();
+    if(s){ s.vu = maintenant(); try{ localStorage.setItem(CLE_SESSION, JSON.stringify(s)); }catch(e){} }
+  }
+  function effacerSession(){ try{ localStorage.removeItem(CLE_SESSION); }catch(e){} }
+  function sessionValide(){
+    const s = session();
+    return !!(s && s.owner && (maintenant() - (s.vu||0) < GRACE));
+  }
+  const proprietaire = () => { const s = session(); return s ? s.owner : null; };
+
+  /* --- jeton --- */
+  function lireJeton(){
+    try{
+      const d = JSON.parse(localStorage.getItem(CLE_TOKEN) || 'null');
+      if(d){
+        fileId = d.fileId || null; dossierId = d.dossierId || null; email = d.email || null;
+        if(d.token && d.expiry > maintenant()){ accessToken = d.token; tokenExpiry = d.expiry; }
+      }
+    }catch(e){}
+  }
+  function garderJeton(){
+    try{ localStorage.setItem(CLE_TOKEN, JSON.stringify(
+      {token:accessToken, expiry:tokenExpiry, fileId, dossierId, email})); }catch(e){}
+  }
+  function oublierJeton(){
+    accessToken=null; tokenExpiry=0; fileId=null; dossierId=null; email=null;
+    try{ localStorage.removeItem(CLE_TOKEN); }catch(e){}
+  }
+
+  function setEtat(e){ etat = e; peindrePastille(); }
+
+  function client(){
+    if(tokenClient || !window.google || !google.accounts || !google.accounts.oauth2) return null;
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID, scope: SCOPE,
+      callback: r => {
+        if(r && r.access_token){
+          accessToken = r.access_token;
+          tokenExpiry = maintenant() + (Number(r.expires_in||3300) * 1000);
+          garderJeton(); planifierRefresh(); apresConnexion();
+        }else{
+          setEtat(deverrouille ? 'horsligne' : 'off');
+        }
+      }
+    });
+    return tokenClient;
+  }
+  function connecter(interactif, essais){
+    essais = essais || 0;
+    if(!client()){
+      if(essais > 25) return setEtat('erreur');
+      return setTimeout(() => connecter(interactif, essais+1), 400);
+    }
+    setEtat('connexion');
+    try{
+      tokenClient.requestAccessToken(
+        interactif ? {prompt:'consent'} : {prompt:'', hint: proprietaire() || undefined});
+    }catch(e){ setEtat('erreur'); }
+  }
+  function deconnecter(effacerDonnees){
+    if(accessToken){ try{ google.accounts.oauth2.revoke(accessToken, () => {}); }catch(e){} }
+    oublierJeton(); effacerSession();
+    if(effacerDonnees){ try{ localStorage.removeItem(CLE_DB); }catch(e){} DB = neuf(); }
+    deverrouille = false; setEtat('off'); montrerPorte();
+  }
+  function planifierRefresh(){
+    clearTimeout(minuteurRefresh);
+    if(!tokenExpiry) return;
+    let delai = tokenExpiry - maintenant() - 5*60*1000;   // 5 min avant expiration
+    if(delai < 5000) delai = 5000;
+    minuteurRefresh = setTimeout(() => connecter(false), delai);
+  }
+
+  /* --- appels Drive --- */
+  const entetes = extra => Object.assign({Authorization:'Bearer ' + accessToken}, extra || {});
+  function api(url, opts){
+    opts = opts || {};
+    opts.headers = entetes(opts.headers);
+    return fetch(url, opts).then(r => {
+      if(r.status === 401) throw {code:401};
+      if(!r.ok) throw {code:r.status};
+      return r.json();
+    });
+  }
+  function chercher(nom, parent, estDossier){
+    const q = "name='" + nom.replace(/'/g,"\\'") + "' and trashed=false" +
+      (estDossier ? " and mimeType='application/vnd.google-apps.folder'" : "") +
+      (parent ? " and '" + parent + "' in parents" : "");
+    return api("https://www.googleapis.com/drive/v3/files?q=" + encodeURIComponent(q) +
+      "&fields=files(id,name)&spaces=drive")
+      .then(d => (d.files && d.files[0]) ? d.files[0].id : null);
+  }
+  function creerDossier(nom){
+    return api("https://www.googleapis.com/drive/v3/files", {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name:nom, mimeType:'application/vnd.google-apps.folder'})
+    }).then(d => d.id);
+  }
+  function creerFichier(parent, contenu){
+    const b = 'inv-' + uid();
+    const meta = JSON.stringify({name:FICHIER, parents:[parent]});
+    const corps =
+      '--'+b+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'+meta+'\r\n'+
+      '--'+b+'\r\nContent-Type: application/json\r\n\r\n'+contenu+'\r\n--'+b+'--';
+    return api("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+      method:'POST', headers:{'Content-Type':'multipart/related; boundary='+b}, body: corps
+    }).then(d => d.id);
+  }
+  function telecharger(id){
+    return fetch("https://www.googleapis.com/drive/v3/files/"+id+"?alt=media", {headers:entetes()})
+      .then(r => { if(!r.ok) throw {code:r.status}; return r.text(); });
+  }
+  function televerser(id, contenu){
+    return fetch("https://www.googleapis.com/upload/drive/v3/files/"+id+"?uploadType=media", {
+      method:'PATCH', headers:entetes({'Content-Type':'application/json'}), body: contenu
+    }).then(r => { if(!r.ok) throw {code:r.status}; return r.json(); });
+  }
+  function profil(){
+    return api("https://www.googleapis.com/drive/v3/about?fields=user")
+      .then(d => (d.user && d.user.emailAddress) || null);
+  }
+
+  /* --- enchaînement après authentification --- */
+  function apresConnexion(){
+    setEtat('synchro');
+    profil().then(mail => {
+      const prop = proprietaire();
+      if(prop && mail && prop !== mail){
+        oublierJeton();
+        setEtat('off');
+        alert("Cet inventaire appartient à " + prop + ".\nConnecte-toi avec ce compte, ou déconnecte-toi depuis les réglages pour en changer.");
+        return;
+      }
+      email = mail; if(mail && !prop) poserSession(mail); else toucherSession();
+      garderJeton();
+      ouvrirApp();
+      return synchroniser();
+    }).catch(gererErreur);
+  }
+
+  function assurerFichier(){
+    if(fileId) return Promise.resolve();
+    return chercher(DOSSIER, null, true)
+      .then(id => id || creerDossier(DOSSIER))
+      .then(id => { dossierId = id; return chercher(FICHIER, id, false); })
+      .then(id => {
+        if(id){ fileId = id; garderJeton(); return; }
+        return creerFichier(dossierId, JSON.stringify(DB)).then(nid => { fileId = nid; garderJeton(); });
+      });
+  }
+
+  /* Synchro complète : je récupère la version du Drive, je fusionne, je renvoie. */
+  function synchroniser(silencieuse){
+    if(!accessToken){ setEtat(deverrouille ? 'horsligne' : 'off'); return Promise.resolve(); }
+    if(enCours){ enAttente = true; return Promise.resolve(); }
+    enCours = true; setEtat('synchro');
+    return assurerFichier()
+      .then(() => telecharger(fileId))
+      .then(texte => {
+        let distant = null;
+        try{ distant = JSON.parse(texte); }catch(e){}
+        const avant = JSON.stringify(DB);
+        DB = fusionner(DB, distant);
+        ecrireLocal();
+        if(!silencieuse && JSON.stringify(DB) !== avant) rendre();
+        return televerser(fileId, JSON.stringify(DB));
+      })
+      .then(() => { toucherSession(); setEtat('ok'); })
+      .catch(gererErreur)
+      .then(() => {
+        enCours = false;
+        if(enAttente){ enAttente = false; setTimeout(() => synchroniser(true), 400); }
+      });
+  }
+
+  function planifier(){
+    if(!accessToken) return;
+    clearTimeout(minuteurPush);
+    minuteurPush = setTimeout(() => synchroniser(true), 1500);
+  }
+
+  function gererErreur(err){
+    if(err && err.code === 401){
+      accessToken = null; garderJeton();
+      setEtat('horsligne');
+      if(sessionValide()) connecter(false);
+    }else{
+      setEtat(navigator.onLine ? 'erreur' : 'horsligne');
+    }
+  }
+
+  window.addEventListener('online', () => { if(sessionValide()) connecter(false); });
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible' && sessionValide()){
+      if(!accessToken || tokenExpiry - maintenant() < 5*60*1000) connecter(false);
+      else synchroniser(true);
+    }
+  });
+
+  function demarrer(){
+    lireJeton();
+    if(sessionValide()){
+      ouvrirApp();                                  // accès immédiat, même hors ligne
+      if(accessToken){ planifierRefresh(); synchroniser(true); }
+      else { setEtat('horsligne'); connecter(false); }
+    }else{
+      setEtat('off'); montrerPorte();
+    }
+  }
+
+  return {demarrer, connecter, deconnecter, planifier,
+    synchroniser: () => synchroniser(false),
+    etat: () => etat, email: () => email || proprietaire(),
+    connecte: () => !!accessToken, sessionValide};
+})();
+
+function peindrePastille(){
+  const p = $('#pastille'); if(!p) return;
+  const e = Drive.etat();
+  let cls = '', txt = 'Local';
+  if(e === 'off'){ cls=''; txt='Connecter'; }
+  else if(e === 'connexion' || e === 'synchro'){ cls='occupe'; txt='Synchro…'; }
+  else if(e === 'ok'){ cls='ok'; txt='À jour'; }
+  else if(e === 'horsligne'){ cls='hs'; txt='Hors ligne'; }
+  else if(e === 'erreur'){ cls='hs'; txt='Erreur'; }
+  p.innerHTML = `<span class="point ${cls}"></span><span>${txt}</span>`;
+}
+
+function montrerPorte(){
+  $('#porte').style.display = 'flex';
+  peindrePastille();
+}
+function ouvrirApp(){
+  if(deverrouille) return;
+  deverrouille = true;
+  $('#porte').style.display = 'none';
+  rendre();
+}
+
+/* =========================================================
+   3. ÉCRANS
+   ========================================================= */
+function rendre(){
+  if(!deverrouille) return;
+  ({accueil:vAccueil, categorie:vCategorie, sousCat:vSousCat,
+    recherche:vRecherche, ajouter:vAjouter, reglages:vReglages}[vue.ecran] || vAccueil)();
+  peindrePastille();
+}
+function majBarre(titre, compte, retour){
+  $('#titre').textContent = titre;
+  $('#compte').textContent = compte || '';
+  $('#retour').style.display = retour ? 'block' : 'none';
+}
+function afficherRecherche(on, ph){
+  $('#zone-recherche').style.display = on ? 'block' : 'none';
+  if(on && ph) $('#champ-recherche').placeholder = ph;
+}
+function majOnglets(nom){
+  document.querySelectorAll('#onglets button').forEach(b =>
+    b.classList.toggle('actif', b.dataset.onglet === nom));
+}
+const fab = on => { $('#fab').style.display = on ? 'flex' : 'none'; };
+
+function vAccueil(){
+  majBarre('Inventaire', totalGlobal() + ' objets', false);
+  afficherRecherche(true, "Chercher dans tout l'inventaire");
+  majOnglets('etageres'); fab(false);
+
+  corps.innerHTML = cats().map(c => {
+    const liste = sousDe(c), n = totalCat(c);
+    const max = Math.max(1, ...liste.map(totalSous));
+    const etagere = n === 0
+      ? `<div class="placeholder">Étagère vide — ajoute un objet</div>`
+      : liste.map(s => {
+          const q = totalSous(s); if(!q) return '';
+          return `<div class="dos" style="background:${col(s.couleur)};width:${(q/n*100).toFixed(2)}%;height:${55 + Math.round(45*Math.sqrt(q/max))}%"></div>`;
+        }).join('');
+    return `<div class="rayon" data-cat="${c.id}">
+      <div class="titre"><h3>${esc(c.nom)}</h3><span>${n}</span></div>
+      <div class="sous">${esc(liste.map(s => s.nom).join(' · '))}</div>
+      <div class="etagere">${etagere}</div><div class="plateau"></div></div>`;
+  }).join('');
+  corps.querySelectorAll('.rayon').forEach(el =>
+    el.onclick = () => aller({ecran:'categorie', cat:el.dataset.cat}));
+}
+
+function vCategorie(){
+  const c = cat(vue.cat);
+  if(!c) return aller({ecran:'accueil'});
+  majBarre(c.nom, String(totalCat(c)), true);
+  afficherRecherche(true, 'Chercher dans ' + c.nom.toLowerCase());
+  majOnglets('etageres'); fab(true);
+
+  const liste = sousDe(c).sort((a,b) => totalSous(b) - totalSous(a) || parNom(a,b));
+  corps.innerHTML = liste.map(s => `
+    <div class="ligne" data-sous="${s.id}">
+      <span class="marque" style="background:${col(s.couleur)}"></span>
+      <span class="nom">${esc(s.nom)}</span><span class="n">${totalSous(s)}</span></div>`).join('') +
+    `<button class="bouton secondaire" id="ajout-sous" style="margin-top:12px">+ Nouvelle sous-catégorie</button>`;
+
+  corps.querySelectorAll('.ligne').forEach(el =>
+    el.onclick = () => aller({ecran:'sousCat', cat:c.id, sous:el.dataset.sous}));
+  $('#ajout-sous').onclick = () => {
+    const nom = prompt('Nom de la nouvelle sous-catégorie ?');
+    if(!nom || !nom.trim()) return;
+    c.sous.push({id:uid(), nom:nom.trim(), couleur:c.couleur, maj:maintenant(), objets:[]});
+    enregistrer(); rendre(); toast('Sous-catégorie ajoutée');
+  };
+}
+
+function vSousCat(){
+  const c = cat(vue.cat), s = sous(c, vue.sous);
+  if(!s) return aller({ecran:'categorie', cat:vue.cat});
+  majBarre(s.nom, String(totalSous(s)), true);
+  afficherRecherche(true, 'Chercher un titre');
+  majOnglets('etageres'); fab(true);
+
+  const liste = objetsDe(s).sort(parNom);
+  corps.innerHTML = liste.length ? liste.map(o => `
+    <div class="objet" data-objet="${o.id}">
+      <span class="puce" style="background:${col(s.couleur)}"></span>
+      <span class="txt">${esc(o.nom)}</span><span class="menu">⋯</span></div>`).join('')
+    : `<div class="vide">Rien ici pour l'instant.<br>Touche le bouton + pour ajouter un objet.</div>
+       <button class="bouton danger" id="suppr-sous">Supprimer cette sous-catégorie</button>`;
+
+  corps.querySelectorAll('.objet').forEach(el =>
+    el.onclick = () => menuObjet(c.id, s.id, el.dataset.objet));
+  const b = $('#suppr-sous');
+  if(b) b.onclick = () => {
+    if(!confirm(`Supprimer la sous-catégorie « ${s.nom} » ?`)) return;
+    s.supp = true; s.maj = maintenant();
+    enregistrer(); aller({ecran:'categorie', cat:c.id}); toast('Sous-catégorie supprimée');
+  };
+}
+
+function vRecherche(){
+  majBarre('Chercher', '', false);
+  afficherRecherche(true, "Chercher dans tout l'inventaire");
+  majOnglets('recherche'); fab(false);
+  resultats($('#champ-recherche').value);
+}
+
+function collecte(){
+  const p = [];
+  cats().forEach(c => sousDe(c).forEach(s => objetsDe(s).forEach(o => p.push({c,s,o}))));
+  return p;
+}
+function listerResultats(t){
+  return `<div class="titre-groupe">${t.length} résultat${t.length>1?'s':''}</div>` + t.map(x => `
+    <div class="objet" data-cat="${x.c.id}" data-sous="${x.s.id}" data-objet="${x.o.id}">
+      <span class="puce" style="background:${col(x.s.couleur)}"></span>
+      <span class="txt">${esc(x.o.nom)}<span class="chemin">${esc(x.c.nom)} · ${esc(x.s.nom)}</span></span>
+      <span class="menu">⋯</span></div>`).join('');
+}
+function brancherResultats(){
+  corps.querySelectorAll('.objet').forEach(el =>
+    el.onclick = () => menuObjet(el.dataset.cat, el.dataset.sous, el.dataset.objet));
+}
+function resultats(q){
+  q = (q||'').trim().toLowerCase();
+  if(q.length < 2){
+    corps.innerHTML = `<div class="vide">Tape au moins deux lettres.<br>La recherche couvre les ${totalGlobal()} objets de l'inventaire.</div>`;
+    return;
+  }
+  const t = collecte().filter(x => x.o.nom.toLowerCase().includes(q)).sort((a,b) => parNom(a.o,b.o));
+  corps.innerHTML = t.length ? listerResultats(t)
+    : `<div class="vide">Aucun objet ne correspond à « ${esc(q)} ».<br>Tu ne l'as sans doute pas encore.</div>`;
+  brancherResultats();
+}
+
+function vAjouter(){
+  majBarre('Ajouter', '', false);
+  afficherRecherche(false);
+  majOnglets('ajouter'); fab(false);
+  const catId = vue.preCat && cat(vue.preCat) ? vue.preCat : cats()[0].id;
+
+  corps.innerHTML = `
+    <div class="champ"><label>Catégorie</label>
+      <select id="f-cat">${cats().map(c =>
+        `<option value="${c.id}" ${c.id===catId?'selected':''}>${esc(c.nom)}</option>`).join('')}</select></div>
+    <div class="champ"><label>Sous-catégorie</label><select id="f-sous"></select></div>
+    <div class="champ"><label>Nom de l'objet</label>
+      <input id="f-nom" type="text" placeholder="ex. Ghost of Yotei" autocomplete="off"></div>
+    <button class="bouton" id="f-ok">Enregistrer</button>
+    <p class="aide">Tout ce qui n'est pas le titre — un prêt en cours, une édition japonaise — s'écrit directement dans le nom, comme dans le fichier Excel.</p>`;
+
+  const majSous = () => {
+    const c = cat($('#f-cat').value);
+    $('#f-sous').innerHTML = sousDe(c).map(s =>
+      `<option value="${s.id}" ${s.id===vue.preSous?'selected':''}>${esc(s.nom)}</option>`).join('');
+  };
+  majSous();
+  $('#f-cat').onchange = () => { vue.preSous = null; majSous(); };
+
+  const valider = () => {
+    const nom = $('#f-nom').value.trim();
+    if(!nom) return toast('Il manque le nom');
+    const c = cat($('#f-cat').value), s = sous(c, $('#f-sous').value);
+    if(!s) return toast('Choisis une sous-catégorie');
+    if(objetsDe(s).some(o => o.nom.toLowerCase() === nom.toLowerCase())
+       && !confirm(`« ${nom} » est déjà dans ${s.nom}. L'ajouter quand même ?`)) return;
+    s.objets.push({id:uid(), nom, maj:maintenant()});
+    enregistrer();
+    vue.preCat = c.id; vue.preSous = s.id;
+    $('#f-nom').value = ''; $('#f-nom').focus();
+    toast(`Ajouté dans ${s.nom}`);
+  };
+  $('#f-ok').onclick = valider;
+  $('#f-nom').onkeydown = e => { if(e.key === 'Enter') valider(); };
+}
+
+function vReglages(){
+  majBarre('Réglages', '', false);
+  afficherRecherche(false);
+  majOnglets('reglages'); fab(false);
+
+  const mail = Drive.email() || '';
+  const e = Drive.etat();
+  const detail = e === 'ok' ? `Dossier « ${DOSSIER} » synchronisé automatiquement`
+    : (e === 'synchro' || e === 'connexion') ? 'Synchronisation en cours…'
+    : 'Hors ligne — les modifications partiront à la prochaine connexion';
+
+  corps.innerHTML = `
+    <div class="titre-groupe">Compte</div>
+    <div class="compte-ligne">
+      <div class="avatar">${esc((mail||'?').slice(0,1).toUpperCase())}</div>
+      <div><div style="font-size:14px">${esc(mail || 'Non connecté')}</div>
+        <div style="font-size:12px;color:var(--gris);margin-top:2px">${esc(detail)}</div></div>
+    </div>
+    <button class="bouton secondaire" id="r-sync">Synchroniser maintenant</button>
+    <button class="bouton neutre" id="r-out">Se déconnecter</button>
+
+    <div class="section"><div class="titre-groupe">Inventaire</div>
+      ${cats().map(c => `<div class="ligne" style="cursor:default">
+        <span class="marque" style="background:${col(c.couleur)}"></span>
+        <span class="nom">${esc(c.nom)}</span><span class="n">${totalCat(c)}</span></div>`).join('')}
+      <div class="ligne" style="cursor:default;background:#EAF0F2">
+        <span class="marque" style="background:var(--accent)"></span>
+        <span class="nom">Total</span><span class="n">${totalGlobal()}</span></div>
+    </div>
+
+    <div class="section"><div class="titre-groupe">Copie de secours</div>
+      <button class="bouton secondaire" id="r-export">Exporter en JSON</button>
+      <button class="bouton secondaire" id="r-import">Importer un JSON</button>
+      <input type="file" id="r-fichier" accept=".json,application/json" style="display:none">
+      <p class="aide">La synchro Drive suffit au quotidien. L'export reste utile avant une grosse manipulation.</p>
+    </div>
+
+    <div class="section"><div class="titre-groupe">Zone sensible</div>
+      <button class="bouton danger" id="r-reset">Repartir du fichier Excel d'origine</button>
+      <p class="aide">Efface tout ce qui a été ajouté ou modifié depuis, sur cet appareil et sur le Drive.</p>
+    </div>`;
+
+  $('#r-sync').onclick = () => { Drive.synchroniser(); toast('Synchronisation lancée'); };
+  $('#r-out').onclick = () => {
+    if(!confirm('Se déconnecter ?')) return;
+    Drive.deconnecter(confirm("Effacer aussi l'inventaire de cet appareil ?\n(les données restent sur ton Drive)"));
+  };
+  $('#r-export').onclick = exporter;
+  $('#r-import').onclick = () => $('#r-fichier').click();
+  $('#r-fichier').onchange = ev => { if(ev.target.files[0]) importer(ev.target.files[0]); };
+  $('#r-reset').onclick = () => {
+    if(!confirm("Tout remettre à l'état du fichier Excel de départ ?")) return;
+    const t = maintenant();
+    DB.cats.forEach(c => c.sous.forEach(s => s.objets.forEach(o => { o.supp = true; o.maj = t; })));
+    const frais = neuf();
+    DB = fusionner(DB, frais);
+    DB.cats.forEach(c => c.sous.forEach(s => s.objets.forEach(o => { delete o.supp; o.maj = t + 1; })));
+    enregistrer(); aller({ecran:'accueil'}); toast('Inventaire réinitialisé');
+  };
+}
+
+/* =========================================================
+   4. ACTIONS SUR UN OBJET
+   ========================================================= */
+function ouvrirFeuille(html){ $('#feuille').innerHTML = html; $('#voile').classList.add('ouvert'); }
+function fermerFeuille(){ $('#voile').classList.remove('ouvert'); }
+$('#voile').addEventListener('click', e => { if(e.target.id === 'voile') fermerFeuille(); });
+
+function menuObjet(catId, sousId, objId){
+  const c = cat(catId), s = sous(c, sousId);
+  const o = s && s.objets.find(x => x.id === objId && !x.supp);
+  if(!o) return;
+  ouvrirFeuille(`
+    <h4>${esc(o.nom)}</h4><div class="ss-titre">${esc(c.nom)} · ${esc(s.nom)}</div>
+    <button class="bouton secondaire" id="m-renommer">Renommer</button>
+    <button class="bouton secondaire" id="m-deplacer">Déplacer</button>
+    <button class="bouton danger" id="m-suppr">Supprimer</button>
+    <button class="bouton neutre" id="m-annuler">Annuler</button>`);
+
+  $('#m-annuler').onclick = fermerFeuille;
+  $('#m-renommer').onclick = () => {
+    const nom = prompt('Nouveau nom :', o.nom);
+    if(nom && nom.trim()){ o.nom = nom.trim(); o.maj = maintenant(); enregistrer(); }
+    fermerFeuille(); rendre();
+  };
+  $('#m-suppr').onclick = () => {
+    if(confirm(`Supprimer « ${o.nom} » ?`)){
+      o.supp = true; o.maj = maintenant(); enregistrer(); toast('Supprimé');
+    }
+    fermerFeuille(); rendre();
+  };
+  $('#m-deplacer').onclick = () => {
+    const options = [];
+    cats().forEach(cc => sousDe(cc).forEach(ss => options.push({v:cc.id+'|'+ss.id, t:cc.nom+' · '+ss.nom})));
+    ouvrirFeuille(`
+      <h4>Déplacer</h4><div class="ss-titre">${esc(o.nom)}</div>
+      <div class="champ"><label>Nouvel emplacement</label>
+        <select id="d-cible">${options.map(op =>
+          `<option value="${op.v}" ${op.v === c.id+'|'+s.id ? 'selected':''}>${esc(op.t)}</option>`).join('')}</select></div>
+      <button class="bouton" id="d-ok">Déplacer</button>
+      <button class="bouton neutre" id="d-annuler">Annuler</button>`);
+    $('#d-annuler').onclick = fermerFeuille;
+    $('#d-ok').onclick = () => {
+      const [ci, si] = $('#d-cible').value.split('|');
+      const cible = sous(cat(ci), si);
+      if(cible && cible !== s){
+        const t = maintenant();
+        o.supp = true; o.maj = t;
+        cible.objets.push({id:uid(), nom:o.nom, maj:t});
+        enregistrer(); toast('Déplacé vers ' + cible.nom);
+      }
+      fermerFeuille(); rendre();
+    };
+  };
+}
+
+/* =========================================================
+   5. EXPORT / IMPORT
+   ========================================================= */
+function exporter(){
+  const d = new Date();
+  const nom = `inventaire-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.json`;
+  const blob = new Blob([JSON.stringify(DB, null, 1)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nom; document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 500);
+  toast('Fichier exporté');
+}
+function importer(fichier){
+  const l = new FileReader();
+  l.onload = ev => {
+    try{
+      const brut = JSON.parse(ev.target.result);
+      const entrant = Array.isArray(brut) ? {version:1, maj:maintenant(), cats:brut} : brut;
+      if(!entrant || !Array.isArray(entrant.cats)) throw new Error('format');
+      if(!confirm("Fusionner ce fichier avec l'inventaire actuel ?")) return;
+      DB = fusionner(DB, entrant);
+      enregistrer(); aller({ecran:'accueil'}); toast('Inventaire importé');
+    }catch(err){ toast("Ce fichier n'est pas un export d'inventaire"); }
+  };
+  l.readAsText(fichier);
+}
+
+/* =========================================================
+   6. NAVIGATION
+   ========================================================= */
+function aller(v){
+  vue = Object.assign({}, v, {preCat:vue.preCat, preSous:vue.preSous});
+  $('#champ-recherche').value = '';
+  rendre();
+  corps.scrollTop = 0;
+}
+$('#retour').onclick = () =>
+  aller(vue.ecran === 'sousCat' ? {ecran:'categorie', cat:vue.cat} : {ecran:'accueil'});
+document.querySelectorAll('#onglets button').forEach(b =>
+  b.onclick = () => aller({ecran: b.dataset.onglet === 'etageres' ? 'accueil' : b.dataset.onglet}));
+$('#fab').onclick = () => {
+  vue.preCat = vue.cat; vue.preSous = vue.sous;
+  aller({ecran:'ajouter'});
+};
+$('#pastille').onclick = () => {
+  if(!Drive.connecte() && !Drive.sessionValide()) return Drive.connecter(true);
+  aller({ecran:'reglages'});
+};
+$('#porte-bouton').onclick = () => {
+  $('#porte-texte').textContent = "Ouverture de la fenêtre Google…";
+  Drive.connecter(true);
+};
+
+$('#champ-recherche').addEventListener('input', ev => {
+  const q = ev.target.value.trim().toLowerCase();
+  if(vue.ecran === 'recherche') return resultats(q);
+  if(q.length < 2) return rendre();
+  let pool;
+  if(vue.ecran === 'accueil') pool = collecte();
+  else if(vue.ecran === 'categorie'){
+    const c = cat(vue.cat); pool = [];
+    sousDe(c).forEach(s => objetsDe(s).forEach(o => pool.push({c,s,o})));
+  } else if(vue.ecran === 'sousCat'){
+    const c = cat(vue.cat), s = sous(c, vue.sous);
+    pool = objetsDe(s).map(o => ({c,s,o}));
+  } else return;
+  const t = pool.filter(x => x.o.nom.toLowerCase().includes(q)).sort((a,b) => parNom(a.o,b.o));
+  corps.innerHTML = t.length ? listerResultats(t)
+    : `<div class="vide">Aucun résultat pour « ${esc(q)} ».</div>`;
+  brancherResultats();
+});
+
+/* =========================================================
+   7. DÉMARRAGE
+   ========================================================= */
+charger();
+Drive.demarrer();
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
